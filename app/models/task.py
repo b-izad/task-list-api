@@ -1,10 +1,6 @@
 from app import db
 
 
-# name - The name of the task
-# description - A text description of the task
-# completed_at - The date, saved as text, in which the task was completed.
-
 
 class Task(db.Model):
     task_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -13,9 +9,9 @@ class Task(db.Model):
     completed_at = db.Column(db.DateTime,default=None,nullable=True)
     goals = db.relationship("Goal")
     goal_id = db.Column(db.Integer, db.ForeignKey('goal.goal_id'), nullable=True)
-    # is_complete=db.Column(db.String,default=False)
+   
 
-    #why to json
+
     def to_json(self):
         if self.completed_at:
             is_completed=True
@@ -43,15 +39,4 @@ class Task(db.Model):
             "is_complete": is_completed,
         }
 
-    def to_jsonn(self):
-        if self.completed_at:
-            is_completed=True
-        else:
-            is_completed=False
-        return  {
-            "goal_id":self.goal_id,
-            "id": self.task_id,
-            "title": self.title,
-            "description": self.description,
-            "is_complete": is_completed,
-        }
+   

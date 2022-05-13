@@ -11,17 +11,24 @@ import requests
 task_list_bp = Blueprint("task_list", __name__,url_prefix="/tasks")
 goal_list_bp = Blueprint("goal_list", __name__,url_prefix="/goals")
 
-# @task_list_bp.route("", methods=["GET"])
-# def get_all_tasks():
-    
-#     tasks = Task.query.all()
-        
-#     task_response = []
-#     for task in tasks:
-#         task_response.append(task.to_json())
-#     return  jsonify(task_response),200
+
+def validate_task(task_id):
+    try:
+       task_id = int(task_id)
+    except:
+        abort(make_response({"message":f"task {task_id} invalid"}, 400))
+
+    task = Task.query.get(task_id)
+
+    if not task:
+        abort(make_response({"message":f"task {task_id} not found"}, 404))
+
+    return task
 
 
+
+
+#Get tasks sorted or get all tasks
 @task_list_bp.route("", methods=["GET"])
 def get_tasks_sorted():
    
@@ -42,9 +49,13 @@ def get_tasks_sorted():
         task_response.append(task.to_json())
     return make_response( jsonify(task_response),200)
 
+
+
+
+#Get one task
 @task_list_bp.route("/<task_id>", methods=["GET"])
 def get_one_task(task_id):
-    # task = validate_task(task_id)
+   
     task = Task.query.get(task_id)
 
     if task:
@@ -54,6 +65,9 @@ def get_one_task(task_id):
     else:
         return make_response(jsonify(None), 404)
 
+
+
+#Create one task
 @task_list_bp.route("", methods=["POST"])
 def create_new_task():
    
@@ -75,24 +89,7 @@ def create_new_task():
 
 
 
-
-
-def validate_task(task_id):
-    try:
-       task_id = int(task_id)
-    except:
-       #************************* ***
-        abort(make_response({"message":f"task {task_id} invalid"}, 400))
-
-    task = Task.query.get(task_id)
-
-    if not task:
-        abort(make_response({"message":f"task {task_id} not found"}, 404))
-
-    return task
-#??????????
-
-    
+#Update one task
 @task_list_bp.route("/<task_id>", methods=["PUT"])
 def update_task(task_id):
     task = validate_task(task_id)
@@ -104,10 +101,10 @@ def update_task(task_id):
 
     db.session.commit()
 
-    # return make_response(f"task #{task.task_id} successfully updated")
     return jsonify({"task":task.to_json()}),200
 
 
+#Delete one task
 @task_list_bp.route("/<task_id>", methods=["DELETE"])
 def delete_task(task_id):
     task = validate_task(task_id)
@@ -119,24 +116,17 @@ def delete_task(task_id):
     
 
 
+
+#Mark complete for one task and use Slack API
 @task_list_bp.route('/<task_id>/mark_complete', methods=['PATCH'])
 def mark_complete(task_id):
     task=Task.query.get(task_id)
     if not task:
-        #abort be dARD MIKHORE?
         abort(make_response({"message":f"task {task_id} not found"}, 404))
     task.completed_at = now()
     db.session.add(task)
     db.session.commit()
     
-    
-    # task_response={"task":{
-    #         "id": task.task_id,
-    #         "title": task.title,
-    #         "description": task.description, "is_complete": True
-    #     }}
-    #     #JAYE 200 VA SHEKLE J DOROSTE?
-    # return jsonify(task_response),200
 
     slack_api_url = "https://slack.com/api/chat.postMessage"
     params = {
@@ -151,33 +141,42 @@ def mark_complete(task_id):
     return make_response(jsonify({"task" : task.to_json()}))
 
 
-
+#Mark incomplete for one task
 @task_list_bp.route('/<task_id>/mark_incomplete', methods=['PATCH'])
 def mark_incomplete(task_id):
     task=Task.query.get(task_id)
     if not task:
-        #abort be dARD MIKHORE?
         abort(make_response({"message":f"task {task_id} not found"}, 404))
     task.completed_at = None
     db.session.add(task)
     db.session.commit()
-
-
-    
-    
     task_response={"task":{
             "id": task.task_id,
             "title": task.title,
             "description": task.description, "is_complete": False
         }}
-        #JAYE 200 VA SHEKLE J DOROSTE?
     return jsonify(task_response),200
 
+#*******************************Goal_routes*******************************************
+
+def validate_goal(goal_id):
+    try:
+        goal_id = int(goal_id)
+    except:
+        abort(make_response({"message":f"goal {goal_id} invalid"}, 400))
+
+    goal = Goal.query.get(goal_id)
+
+    if not goal:
+        abort(make_response({"message":f"goal {goal_id} not found"}, 404))
+
+    return goal
 
 
+#Create one goal
 @goal_list_bp.route("", methods=["post"])
 def create_new_goal():
-    #************************
+   
         request_body = request.get_json()
         if "title" not in request_body:
             return {
@@ -194,21 +193,7 @@ def create_new_goal():
 
 
 
-
-def validate_goal(goal_id):
-    try:
-        goal_id = int(goal_id)
-    except:
-       #************************* ***
-        abort(make_response({"message":f"goal {goal_id} invalid"}, 400))
-
-    goal = Goal.query.get(goal_id)
-
-    if not goal:
-        abort(make_response({"message":f"goal {goal_id} not found"}, 404))
-
-    return goal
-
+#Get one goal
 @goal_list_bp.route("/<goal_id>", methods=["GET"])
 def get_one_goal(goal_id):
     goal = validate_goal(goal_id)
@@ -218,6 +203,8 @@ def get_one_goal(goal_id):
         "title": goal.title,
         }}
 
+
+#Get all goals
 @goal_list_bp.route("", methods=["GET"])
 def get_all_goal():
     goals = Goal.query.all()
@@ -229,10 +216,10 @@ def get_all_goal():
             "title": goal.title,
             
         })
-        #jsonify bardar bebi chi mishe va bebing mishe refactor kard
     return jsonify(goal_response),200
 
 
+#Update one goal
 @goal_list_bp.route("/<goal_id>", methods=["PUT"])
 def update_goal(goal_id):
     goal = validate_goal(goal_id)
@@ -247,6 +234,8 @@ def update_goal(goal_id):
 
     return make_response(jsonify(f"goal #{goal.goal_id} successfully updated")),200
 
+
+#Delete one goal
 @goal_list_bp.route("/<goal_id>", methods=["DELETE"])
 def delete_goal(goal_id):
     goal = validate_goal(goal_id)
@@ -257,10 +246,12 @@ def delete_goal(goal_id):
     return {"details":f"Goal {goal.goal_id} \"{goal.title}\" successfully deleted"}
 
 
+#********************************Nested routes************************************
+
+#Show tasks for a goal
 @goal_list_bp.route("/<goal_id>/tasks", methods=["GET"])
 def show_tasks_for_a_goal(goal_id):
     goal = validate_goal(goal_id)
-    #****
     tasks = Task.query.filter_by(goal=goal)
     task_list = []
 
@@ -273,16 +264,7 @@ def show_tasks_for_a_goal(goal_id):
     }), 200)
 
 
-
-
-    # response = {"id" : goal.goal_id, "title": goal.title, "tasks":[]
-    # }
-    # #??????????????????/
-    # for task in goal.tasks:
-    #     response["tasks"].append(task.to_jsonn())
-    
-    # return response,200
-
+#Post tasks to a goal
 @goal_list_bp.route("/<goal_id>/tasks", methods=["POST"])
 def posts_tasks_to_a_goal(goal_id):
     goal = validate_goal(goal_id)
@@ -292,7 +274,7 @@ def posts_tasks_to_a_goal(goal_id):
     request_body = request.get_json()
     for task_id in request_body["task_ids"]:
         task = Task.query.get(task_id)
-        #******
+
         task.goal_id=goal.goal_id
     if not task:
         abort(make_response({"message":f"task {task_id} invalid"}, 400))
